@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Hopeai | 旗舰级临床样本量计算平台 v6.2</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root { --hopeai-purple: #6f42c1; --hopeai-gradient: linear-gradient(135deg, #6f42c1 0%, #4e73df 100%); }
+        body { background-color: #f0f2f5; font-family: 'PingFang SC', system-ui, sans-serif; padding-bottom: 50px; }
+        
+        /* 页眉 */
+        .navbar-hopeai { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 10px 30px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .brand-logo { font-size: 22px; font-weight: 800; color: var(--hopeai-purple); }
+        .brand-logo span { color: #64748b; font-weight: 400; font-size: 14px; margin-left: 10px; border-left: 1px solid #ddd; padding-left: 10px; }
+
+        .main-container { max-width: 1000px; margin: auto; }
+        .calculator-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+
+        /* 多行选项卡美化 - 适应9个标签 */
+        .nav-pills { background: #f8fafc; padding: 5px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #edf2f7; gap: 5px; display: flex; flex-wrap: wrap; }
+        .nav-pills .nav-item { flex: 1 1 18%; min-width: 120px; } 
+        .nav-pills .nav-link { color: #64748b; font-weight: 600; font-size: 13px; border-radius: 8px; padding: 10px; width: 100%; text-align: center; border: 1px solid transparent; transition: 0.3s; }
+        .nav-pills .nav-link.active { background: var(--hopeai-gradient); color: white; }
+
+        .section-box { border: 1px solid #f1f5f9; border-radius: 12px; padding: 18px; margin-bottom: 18px; background: #fff; }
+        .section-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 15px; display: flex; align-items: center; }
+        .section-title::before { content: ""; width: 4px; height: 16px; background: var(--hopeai-purple); margin-right: 10px; border-radius: 2px; }
+
+        /* 公式展示区 */
+        .formula-card { background: #fdfbff; border: 1px dashed #d1c4e9; border-radius: 10px; padding: 15px; margin-top: 10px; font-family: "Cambria", serif; color: #4527a0; text-align: center; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
+        .formula-title { font-size: 11px; color: #9575cd; text-transform: uppercase; margin-bottom: 8px; font-weight: bold; }
+
+        .result-panel { background: var(--hopeai-gradient); border-radius: 16px; color: white; padding: 30px; text-align: center; margin-top: 20px; box-shadow: 0 10px 20px rgba(111, 66, 193, 0.2); }
+        .result-number { font-size: 4rem; font-weight: 900; line-height: 1; margin: 10px 0; }
+        
+        .btn-run { background: #1e293b; color: white; border: none; padding: 16px; border-radius: 12px; width: 100%; font-weight: 700; font-size: 1.1rem; transition: 0.3s; }
+        .btn-run:hover { background: #000; transform: translateY(-2px); }
+        
+        .footer-text { text-align: center; margin-top: 30px; color: #94a3b8; font-size: 12px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar-hopeai">
+    <div class="brand-logo">Hopeai <span>旗舰级临床决策支持系统</span></div>
+    <div class="badge bg-light text-dark border">v6.2 Full-Function</div>
+</nav>
+
+<div class="main-container">
+    <div class="calculator-card">
+        
+        <!-- 第一层：效能设置 -->
+        <div class="section-box">
+            <div class="section-title">核心统计效能设置</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">显著性水平 (Alpha)</label>
+                    <select id="alpha" class="form-select" onchange="updateFormula()">
+                        <option value="0.05" selected>0.05 (常用双侧)</option>
+                        <option value="0.025">0.025 (严谨单侧)</option>
+                        <option value="0.01">0.01</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">检验效能 (Power, 1-Beta)</label>
+                    <select id="power" class="form-select" onchange="updateFormula()">
+                        <option value="0.8" selected>0.80 (80%)</option>
+                        <option value="0.9">0.90 (90%)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二层：设计切换 (增加单臂研究) -->
+        <ul class="nav nav-pills" id="methodTab">
+            <li class="nav-item"><button class="nav-link active" id="mean-tab" data-bs-toggle="pill" data-bs-target="#pane-mean" onclick="updateFormula()">均值比较</button></li>
+            <li class="nav-item"><button class="nav-link" id="prop-tab" data-bs-toggle="pill" data-bs-target="#pane-prop" onclick="updateFormula()">率的比较</button></li>
+            <li class="nav-item"><button class="nav-link" id="survival-tab" data-bs-toggle="pill" data-bs-target="#pane-survival" onclick="updateFormula()">生存分析</button></li>
+            <li class="nav-item"><button class="nav-link" id="single-tab" data-bs-toggle="pill" data-bs-target="#pane-single" onclick="updateFormula()">单臂研究</button></li>
+            <li class="nav-item"><button class="nav-link" id="sup-tab" data-bs-toggle="pill" data-bs-target="#pane-sup" onclick="updateFormula()">优效性研究</button></li>
+            <li class="nav-item"><button class="nav-link" id="ni-tab" data-bs-toggle="pill" data-bs-target="#pane-ni" onclick="updateFormula()">非劣效研究</button></li>
+            <li class="nav-item"><button class="nav-link" id="eq-tab" data-bs-toggle="pill" data-bs-target="#pane-eq" onclick="updateFormula()">等效性研究</button></li>
+            <li class="nav-item"><button class="nav-link" id="diag-tab" data-bs-toggle="pill" data-bs-target="#pane-diag" onclick="updateFormula()">诊断试验</button></li>
+            <li class="nav-item"><button class="nav-link" id="case-tab" data-bs-toggle="pill" data-bs-target="#pane-case" onclick="updateFormula()">病例对照</button></li>
+        </ul>
+
+        <!-- 第三层：动态变量输入 -->
+        <div class="section-box">
+            <div class="section-title">研究参数输入</div>
+            <div class="tab-content" id="tabContent">
+                <!-- 均值比较 -->
+                <div class="tab-pane fade show active" id="pane-mean">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label small fw-bold">预期差值 (δ)</label><input type="number" id="mean_delta" class="form-control" placeholder="如: 5"></div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">标准差 (σ)</label><input type="number" id="mean_sd" class="form-control" placeholder="如: 10"></div>
+                    </div>
+                </div>
+                <!-- 率的比较 -->
+                <div class="tab-pane fade" id="pane-prop">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label small fw-bold">对照组率 (P1)</label><input type="number" id="prop_p1" class="form-control" placeholder="0.3"></div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">试验组率 (P2)</label><input type="number" id="prop_p2" class="form-control" placeholder="0.5"></div>
+                    </div>
+                </div>
+                <!-- 单臂研究 (Proportion) -->
+                <div class="tab-pane fade" id="pane-single">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label small fw-bold">目标值/历史控制率 (P₀)</label><input type="number" id="single_p0" class="form-control" placeholder="如: 0.2"></div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">预期试验组率 (P₁)</label><input type="number" id="single_p1" class="form-control" placeholder="如: 0.4"></div>
+                    </div>
+                </div>
+                <!-- 生存分析 -->
+                <div class="tab-pane fade" id="pane-survival">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label small fw-bold">风险比 (HR)</label><input type="number" id="surv_hr" class="form-control" placeholder="如: 0.7"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">预期事件率 (ER)</label><input type="number" id="surv_er" class="form-control" placeholder="如: 0.5"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">分配比例 (k)</label><input type="number" id="surv_k" class="form-control" value="1"></div>
+                    </div>
+                </div>
+                <!-- 优效性研究 -->
+                <div class="tab-pane fade" id="pane-sup">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label small fw-bold">预期差值 (Trial-Ref)</label><input type="number" id="sup_delta" class="form-control" placeholder="预期真实差值"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">标准差 (σ)</label><input type="number" id="sup_sd" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">优效界值 (δ₀)</label><input type="number" id="sup_margin" class="form-control" value="0"></div>
+                    </div>
+                </div>
+                <!-- 非劣效 -->
+                <div class="tab-pane fade" id="pane-ni">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label small fw-bold">预期差值 (δ)</label><input type="number" id="ni_delta" class="form-control" value="0"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">标准差 (σ)</label><input type="number" id="ni_sd" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">非劣效界值 (M)</label><input type="number" id="ni_margin" class="form-control" placeholder="正值"></div>
+                    </div>
+                </div>
+                <!-- 等效性 -->
+                <div class="tab-pane fade" id="pane-eq">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label small fw-bold">预期差值 (δ)</label><input type="number" id="eq_delta" class="form-control" value="0"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">标准差 (σ)</label><input type="number" id="eq_sd" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small fw-bold">等效区间 (Δ)</label><input type="number" id="eq_margin" class="form-control" placeholder="双向界值"></div>
+                    </div>
+                </div>
+                <!-- 诊断试验 -->
+                <div class="tab-pane fade" id="pane-diag">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label small fw-bold">预期灵敏度/特异度 (P)</label><input type="number" id="diag_p" class="form-control" placeholder="0.8-0.95"></div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">允许误差 (L)</label><input type="number" id="diag_l" class="form-control" placeholder="通常0.05-0.1"></div>
+                    </div>
+                </div>
+                <!-- 病例对照 -->
+                <div class="tab-pane fade" id="pane-case">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label small fw-bold">对照组暴露率 (P₀)</label><input type="number" id="case_p0" class="form-control" placeholder="如 0.2"></div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">预期优势比 (OR)</label><input type="number" id="case_or" class="form-control" placeholder="如 2.5"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 公式展示 -->
+            <div class="formula-card">
+                <div class="formula-title">当前计算模型算法公式 (Statistical Formula Reference)</div>
+                <div id="formula-latex">--</div>
+            </div>
+        </div>
+
+        <button onclick="mainCalculate()" class="btn btn-run">🚀 执行 Hopeai AI 核心计算</button>
+
+        <div class="result-panel">
+            <div style="font-size: 14px; opacity: 0.85;" id="result-label">建议样本量估算结果 (N)</div>
+            <div class="result-number" id="result">--</div>
+            <div id="event-info" style="font-weight: 600; font-size: 14px; margin-top: 5px;"></div>
+        </div>
+
+        <div class="footer-text">
+            © 2024 Hopeai Digital Health Group. <br>
+            v6.2 更新：新增单臂研究（Single-sample proportion）模型，适用于 II 期单臂临床试验。
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const formulaMap = {
+        'mean-tab': 'n = 2 * (Z<sub>1-α/2</sub> + Z<sub>1-β</sub>)<sup>2</sup> * σ<sup>2</sup> / δ<sup>2</sup>',
+        'prop-tab': 'n = (Z<sub>1-α/2</sub>√[2P(1-P)] + Z<sub>1-β</sub>√[P1(1-P1)+P2(1-P2)])<sup>2</sup> / (P1-P2)<sup>2</sup>',
+        'survival-tab': 'E = 4 * (Z<sub>1-α/2</sub> + Z<sub>1-β</sub>)<sup>2</sup> / (ln HR)<sup>2</sup>  ;  N = E / ER',
+        'single-tab': 'n = (Z<sub>1-α/2</sub>√[P₀(1-P₀)] + Z<sub>1-β</sub>√[P₁(1-P₁)])<sup>2</sup> / (P₁-P₀)<sup>2</sup>',
+        'sup-tab': 'n = 2 * (Z<sub>1-α</sub> + Z<sub>1-β</sub>)<sup>2</sup> * σ<sup>2</sup> / (δ - δ₀)<sup>2</sup>',
+        'ni-tab': 'n = 2 * (Z<sub>1-α</sub> + Z<sub>1-β</sub>)<sup>2</sup> * σ<sup>2</sup> / (δ - M)<sup>2</sup>',
+        'eq-tab': 'n = 2 * (Z<sub>1-α</sub> + Z<sub>1-β</sub>)<sup>2</sup> * σ<sup>2</sup> / Δ<sup>2</sup>',
+        'diag-tab': 'n = Z<sub>1-α/2</sub><sup>2</sup> * P(1-P) / L<sup>2</sup>',
+        'case-tab': 'n = (Z<sub>1-α/2</sub>√[2P(1-P)] + Z<sub>1-β</sub>√[P1(1-P1)+P0(1-P0)])<sup>2</sup> / (P1-P0)<sup>2</sup>'
+    };
+
+    function updateFormula() {
+        const activeTab = document.querySelector('.nav-link.active').id;
+        document.getElementById('formula-latex').innerHTML = formulaMap[activeTab] || '--';
+    }
+
+    function mainCalculate() {
+        const alpha = parseFloat(document.getElementById('alpha').value);
+        const power = parseFloat(document.getElementById('power').value);
+        const activeTab = document.querySelector('.nav-link.active').id;
+        
+        const zDouble = { "0.05": 1.96, "0.01": 2.576, "0.025": 2.24 };
+        const zSingle = { "0.05": 1.645, "0.025": 1.96, "0.01": 2.326 };
+        const zPower = { "0.8": 0.842, "0.9": 1.282 };
+
+        let za = zDouble[alpha] || 1.96;
+        let zb = zPower[power];
+        let n = 0, event_text = "";
+
+        try {
+            if (activeTab === 'mean-tab') {
+                const delta = parseFloat(document.getElementById('mean_delta').value);
+                const sd = parseFloat(document.getElementById('mean_sd').value);
+                n = (2 * Math.pow((za + zb), 2) * Math.pow(sd, 2)) / Math.pow(delta, 2);
+            } 
+            else if (activeTab === 'prop-tab') {
+                const p1 = parseFloat(document.getElementById('prop_p1').value);
+                const p2 = parseFloat(document.getElementById('prop_p2').value);
+                const p_avg = (p1 + p2) / 2;
+                n = Math.pow((za * Math.sqrt(2 * p_avg * (1 - p_avg)) + zb * Math.sqrt(p1*(1-p1) + p2*(1-p2))), 2) / Math.pow((p1 - p2), 2);
+            }
+            else if (activeTab === 'single-tab') {
+                const p0 = parseFloat(document.getElementById('single_p0').value);
+                const p1 = parseFloat(document.getElementById('single_p1').value);
+                // 单臂比例公式
+                n = Math.pow((za * Math.sqrt(p0 * (1 - p0)) + zb * Math.sqrt(p1 * (1 - p1))), 2) / Math.pow((p1 - p0), 2);
+                document.getElementById('result-label').innerText = "建议总样本量 (N):";
+            }
+            else if (activeTab === 'survival-tab') {
+                const hr = parseFloat(document.getElementById('surv_hr').value);
+                const er = parseFloat(document.getElementById('surv_er').value);
+                const k = parseFloat(document.getElementById('surv_k').value);
+                const E = Math.pow((k + 1), 2) / k * Math.pow((za + zb), 2) / Math.pow(Math.log(hr), 2);
+                n = (E / er) / (k + 1);
+                event_text = `预计事件数 (Events): ${Math.ceil(E)}`;
+                document.getElementById('result-label').innerText = "建议每组样本量 (N1=N2):";
+            }
+            else if (activeTab === 'sup-tab' || activeTab === 'ni-tab') {
+                const s_za = zSingle[alpha] || 1.645;
+                const delta = parseFloat(document.getElementById(activeTab === 'sup-tab' ? 'sup_delta' : 'ni_delta').value);
+                const sd = parseFloat(document.getElementById(activeTab === 'sup-tab' ? 'sup_sd' : 'ni_sd').value);
+                const margin = parseFloat(document.getElementById(activeTab === 'sup-tab' ? 'sup_margin' : 'ni_margin').value);
+                n = (2 * Math.pow((s_za + zb), 2) * Math.pow(sd, 2)) / Math.pow((delta - margin), 2);
+                document.getElementById('result-label').innerText = "建议每组样本量 (N1=N2):";
+            }
+            else if (activeTab === 'eq-tab') {
+                const s_za = zSingle[alpha] || 1.645;
+                const sd = parseFloat(document.getElementById('eq_sd').value);
+                const margin = parseFloat(document.getElementById('eq_margin').value);
+                n = (2 * Math.pow((s_za + zb), 2) * Math.pow(sd, 2)) / Math.pow(margin, 2);
+                document.getElementById('result-label').innerText = "建议每组样本量 (N1=N2):";
+            }
+            else if (activeTab === 'diag-tab') {
+                const p = parseFloat(document.getElementById('diag_p').value);
+                const l = parseFloat(document.getElementById('diag_l').value);
+                n = (Math.pow(za, 2) * p * (1 - p)) / Math.pow(l, 2);
+                document.getElementById('result-label').innerText = "建议总样本量 (N):";
+            }
+            else if (activeTab === 'case-tab') {
+                const p0 = parseFloat(document.getElementById('case_p0').value);
+                const or = parseFloat(document.getElementById('case_or').value);
+                const p1 = (or * p0) / (1 + p0 * (or - 1));
+                const p_avg = (p1 + p0) / 2;
+                n = Math.pow((za * Math.sqrt(2 * p_avg * (1 - p_avg)) + zb * Math.sqrt(p1 * (1 - p1) + p0 * (1 - p0))), 2) / Math.pow((p1 - p0), 2);
+                document.getElementById('result-label').innerText = "建议每组样本量 (N_case=N_control):";
+            }
+
+            const finalN = Math.ceil(n);
+            document.getElementById('result').innerText = (isNaN(finalN) || !isFinite(finalN)) ? "--" : finalN;
+            document.getElementById('event-info').innerText = event_text;
+        } catch (e) { alert("输入参数有误"); }
+    }
+    window.onload = updateFormula;
+</script>
+</body>
+</html>
